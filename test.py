@@ -1,6 +1,9 @@
-height = 3564
-width = 2520
-backgroug_color = (255, 255, 255)
+d = './s/'  # 图片所在路径，结尾必须带/，在文件夹里只能有漫画的内容，不能有封面封底
+name = 'output.pdf'  # 输出pdf文件名
+background_color = (255, 255, 255)  # 背景颜色
+cover = ''
+back_cover = ''
+height, width = 3564, 2520  # A4纸的像素大小
 
 import os
 from PIL import Image
@@ -47,8 +50,19 @@ def num_4(imgs):
     t = (len(imgs) + 2) % 4
     for i in range(4 - t):
         imgs.append(Image.new("RGB", (aw, ah), (255, 255, 255)))
-    imgs.insert(0, Image.new("RGB", (aw, ah), (255, 255, 255)))  # 封面
-    imgs.append(Image.new("RGB", (aw, ah), (255, 255, 255)))  # 封底
+
+    # 封面
+    if not cover:
+        imgs.insert(0, Image.new("RGB", (aw, ah), (255, 255, 255)))
+    else:
+        imgs.insert(0, Image.open(cover).convert('RGB'))
+
+    # 封底
+    if not back_cover:
+        imgs.append(Image.new("RGB", (aw, ah), (255, 255, 255)))
+    else:
+        imgs.append(Image.open(back_cover).convert('RGB'))
+
     print("final num:", len(imgs))
 
 
@@ -75,7 +89,7 @@ def get_tw_th(aw, ah):
 def resize(imgs, tw, th):
     print('resizing...')
     for i in range(len(imgs)):
-        img = Image.new("RGB", (tw, th), backgroug_color)
+        img = Image.new("RGB", (tw, th), background_color)
         if imgs[i].height > imgs[i].width:
             timg = imgs[i].resize((int(th / imgs[i].height * imgs[i].width), th), Image.LANCZOS)
         else:
@@ -88,16 +102,6 @@ def resize(imgs, tw, th):
 
 # 在front的(w,h)处开始贴img1,img2,img_2,img_1
 def paste(front, back, img1, img2, img_2, img_1, w, h):
-    # print(img1.size)
-    # print(img2.size)
-    # print(img_2.size)
-    # print(img_1.size)
-    # img1.show()
-    # img2.show()
-    # img_1.show()
-    # img_2.show()
-    # input("press any key to continue...")
-
     front.paste(img2, (w, h))
     front.paste(img_2, (w + img2.width, h))
     back.paste(img1, (width - w - img1.width, h))
@@ -113,8 +117,8 @@ def paste_all(imgs, tw, th):
     while len(imgs) >= 32:  # 一张A4纸打印32张图片
         batch = [imgs[:16], imgs[16:32]]
         imgs = imgs[32:]
-        imgls.append(Image.new("RGB", (width, height), backgroug_color))
-        imgls.append(Image.new("RGB", (width, height), backgroug_color))
+        imgls.append(Image.new("RGB", (width, height), background_color))
+        imgls.append(Image.new("RGB", (width, height), background_color))
         for j in range(2):  # 一张A4纸分上下两部分
             for i in range(4):  # 每4裁、4*2=8页、4*2*2=16张图片成一组
                 w = (i % 2) * 2 * tw
@@ -127,8 +131,8 @@ def paste_all(imgs, tw, th):
     # 最后不足一页的全部归为一组
     if len(imgs) > 0:
         t = (len(imgs) + 2) // 4
-        imgls.append(Image.new("RGB", (width, height), backgroug_color))
-        imgls.append(Image.new("RGB", (width, height), backgroug_color))
+        imgls.append(Image.new("RGB", (width, height), background_color))
+        imgls.append(Image.new("RGB", (width, height), background_color))
         for i in range(t):
             w = (i % 2) * 2 * tw
             h = (i // 2) * th
@@ -137,7 +141,7 @@ def paste_all(imgs, tw, th):
         # imgls[-2].show()
         # imgls[-1].show()
         # input("press any key to continue...")
-    if th < tw:  # 横版
+    if th < tw:  # 横版，整张纸在转回来
         for i in range(len(imgls)):
             imgls[i] = imgls[i].transpose(Image.ROTATE_90)
             # imgls[i].show()
@@ -145,7 +149,6 @@ def paste_all(imgs, tw, th):
 
 
 if __name__ == "__main__":
-    d = './[Comic][海贼王][东立]Vol_01/'
     ls = get_name(d)
     imgs, aw, ah = get_aw_ah(d, ls)
     num_4(imgs)
@@ -154,4 +157,4 @@ if __name__ == "__main__":
     imgs = resize(imgs, tw, th)
     print(imgs[0].size)
     imgls = paste_all(imgs, tw, th)
-    imgls[0].save('output.pdf', 'pdf', save_all=True, append_images=imgls[1:])
+    imgls[0].save(name, 'pdf', save_all=True, append_images=imgls[1:])
