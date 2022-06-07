@@ -1,12 +1,15 @@
-d = './s/'  # 图片所在路径，结尾必须带/，在文件夹里只能有漫画的内容，不能有封面封底
+d = './哆啦A梦/'  # 图片所在路径，结尾必须带/，在文件夹里只能有漫画的内容，不能有封面封底
 name = 'output.pdf'  # 输出pdf文件名
 background_color = (255, 255, 255)  # 背景颜色
-cover = ''
-back_cover = ''
-height, width = 3564, 2520  # A4纸的像素大小
+cover = './封面.png'
+back_cover = './封底.png'
+height, width = 3508, 2480  # A4纸的像素大小
+th, tw = height // 4, width // 4
+t = th / tw
 
 import os
 from PIL import Image
+from PIL.Image import ROTATE_90
 
 
 # 读取文件名
@@ -20,92 +23,81 @@ def get_name(d):
     return ls
 
 
-# 读取图片，计算平均宽高
-def get_aw_ah(d, ls):
-    h, w = 0, 0
+# 读取图片，并将大小规格化
+def get_imgs(d, ls):
     imgs = []
-    hw = {}
     for name in ls:
         img = Image.open(d + name)
-        imgs.append(img)
-        w += img.width
-        h += img.height
-        if hw.get(img.size):
-            hw[img.size] = hw[img.size] + 1
+
+        # 横版变竖版
+        if img.height < img.width:
+            img = img.transpose(ROTATE_90)
+
+        # 等比例缩小适应
+        if img.height / img.width > t:  # 图片比标准的高
+            img = img.resize((int(img.width * th / img.height), th))
         else:
-            hw[img.size] = 1
-    for key in hw.keys():
-        if hw[key] > len(imgs) / 2:
-            aw, ah = key
-            break
-    if 'aw' not in dir():
-        aw = w // len(imgs)
-        ah = h // len(imgs)
-    print('average size:', aw, ah)
-    return imgs, aw, ah
+            img = img.resize((tw, int(img.height * tw / img.width)))
+
+        # 大小规格化，将图片装进一个标准大小的盒子里
+        timg = Image.new('RGB', (tw, th), (255, 255, 255))
+        timg.paste(img, ((tw - img.width) // 2, (th - img.height) // 2))
+
+        imgs.append(timg)
+    return imgs
 
 
 # 图片数量规格化
 def num_4(imgs):
     t = (len(imgs) + 2) % 4
     for i in range(4 - t):
-        imgs.append(Image.new("RGB", (aw, ah), (255, 255, 255)))
+        imgs.append(Image.new("RGB", (tw, th), (255, 255, 255)))
 
     # 封面
     if not cover:
-        imgs.insert(0, Image.new("RGB", (aw, ah), (255, 255, 255)))
+        imgs.insert(0, Image.new("RGB", (tw, th), (255, 255, 255)))
     else:
-        imgs.insert(0, Image.open(cover).convert('RGB'))
+        img = Image.open(cover).convert('RGB')
+
+        # 等比例缩小适应
+        if img.height / img.width > t:  # 图片比标准的高
+            img = img.resize((int(img.width * th / img.height), th))
+        else:
+            img = img.resize((tw, int(img.height * tw / img.width)))
+
+        # 大小规格化，将图片装进一个标准大小的盒子里
+        timg = Image.new('RGB', (tw, th), (255, 255, 255))
+        timg.paste(img, ((tw - img.width) // 2, (th - img.height) // 2))
+
+        imgs.insert(0, img)
 
     # 封底
     if not back_cover:
-        imgs.append(Image.new("RGB", (aw, ah), (255, 255, 255)))
+        imgs.append(Image.new("RGB", (tw, th), (255, 255, 255)))
     else:
-        imgs.append(Image.open(back_cover).convert('RGB'))
+        img = Image.open(back_cover).convert('RGB')
+
+        # 等比例缩小适应
+        if img.height / img.width > t:  # 图片比标准的高
+            img = img.resize((int(img.width * th / img.height), th))
+        else:
+            img = img.resize((tw, int(img.height * tw / img.width)))
+
+        # 大小规格化，将图片装进一个标准大小的盒子里
+        timg = Image.new('RGB', (tw, th), (255, 255, 255))
+        timg.paste(img, ((tw - img.width) // 2, (th - img.height) // 2))
+
+        imgs.append(img)
 
     print("final num:", len(imgs))
-
-
-# 计算最终一张图片的宽高
-def get_tw_th(aw, ah):
-    global width, height
-    t = ah / aw
-    if ah < aw:  # 横版，调换宽高
-        height, width = width, height
-        t = aw / ah
-    if t > 297 / 210:  # 以高为标准
-        th = height / 4
-        tw = int(th / ah * aw)
-        th = int(th)
-    else:  # 以宽为标准
-        tw = width / 4
-        th = int(tw / aw * ah)
-        tw = int(tw)
-    print('to size:', tw, th)
-    return tw, th
-
-
-# 图片大小规格化
-def resize(imgs, tw, th):
-    print('resizing...')
-    for i in range(len(imgs)):
-        img = Image.new("RGB", (tw, th), background_color)
-        if imgs[i].height > imgs[i].width:
-            timg = imgs[i].resize((int(th / imgs[i].height * imgs[i].width), th), Image.LANCZOS)
-        else:
-            timg = imgs[i].resize((tw, int(tw / imgs[i].width * imgs[i].height)), Image.LANCZOS)
-        img.paste(timg, ((tw - timg.width) // 2, (th - timg.height) // 2))
-        imgs[i] = img
-    print('resized')
-    return imgs
 
 
 # 在front的(w,h)处开始贴img1,img2,img_2,img_1
 def paste(front, back, img1, img2, img_2, img_1, w, h):
     front.paste(img2, (w, h))
-    front.paste(img_2, (w + img2.width, h))
-    back.paste(img1, (width - w - img1.width, h))
-    back.paste(img_1, (width - w - img1.width - img_1.width, h))
+    front.paste(img_2, (w + tw, h))
+    back.paste(img1, (width - w - tw, h))
+    back.paste(img_1, (width - w - tw - tw, h))
     # front.show()
     # back.show()
     # input("press any key to continue...")
@@ -141,20 +133,12 @@ def paste_all(imgs, tw, th):
         # imgls[-2].show()
         # imgls[-1].show()
         # input("press any key to continue...")
-    if th < tw:  # 横版，整张纸在转回来
-        for i in range(len(imgls)):
-            imgls[i] = imgls[i].transpose(Image.ROTATE_90)
-            # imgls[i].show()
     return imgls
 
 
 if __name__ == "__main__":
     ls = get_name(d)
-    imgs, aw, ah = get_aw_ah(d, ls)
+    imgs = get_imgs(d, ls)
     num_4(imgs)
-    tw, th = get_tw_th(aw, ah)
-    print(imgs[0].size)
-    imgs = resize(imgs, tw, th)
-    print(imgs[0].size)
     imgls = paste_all(imgs, tw, th)
     imgls[0].save(name, 'pdf', save_all=True, append_images=imgls[1:])
