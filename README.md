@@ -1,4 +1,4 @@
-# 手掌漫画书生成器
+# 迷你漫画书生成器
 
 由图片生成排版好的折页式的漫画书。运行comic-gen.py前确保安装了pillow（pip install pillow）。
 
